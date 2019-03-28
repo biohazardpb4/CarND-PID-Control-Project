@@ -4,6 +4,7 @@
 #include <string>
 #include "json.hpp"
 #include "PID.h"
+#include "twiddler.h"
 
 // for convenience
 using nlohmann::json;
@@ -33,10 +34,12 @@ string hasData(string s) {
 int main() {
   uWS::Hub h;
 
-  PID pid;
-  /**
-   * TODO: Initialize the pid variable.
-   */
+  // Initial params taken from PID Parameter Optimization Lesson.
+  const double KP_START = 0.25;
+  const double KI_START = 0.0006;
+  const double KD_START = 1.55;
+  Twiddler twiddler(KP_START, KI_START, KD_START, 0, 0, 0);//0.005, 0.0005, 0.05);
+  PID pid(twiddler.GetKp(), twiddler.GetKi(), twiddler.GetKd());
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                      uWS::OpCode opCode) {
@@ -54,9 +57,10 @@ int main() {
         if (event == "telemetry") {
           // j[1] is the data JSON object
           double cte = std::stod(j[1]["cte"].get<string>());
+          pid.ProcessError(cte);
           double speed = std::stod(j[1]["speed"].get<string>());
           double angle = std::stod(j[1]["steering_angle"].get<string>());
-          double steer_value;
+          double steer_value = pid.Output();
           /**
            * TODO: Calculate steering value here, remember the steering value is
            *   [-1, 1].
@@ -65,14 +69,14 @@ int main() {
            */
           
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value 
-                    << std::endl;
+          // std::cout << "CTE: " << cte << " Steering Value: " << steer_value 
+          //           << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = 0.3;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          // std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }  // end "telemetry" if
       } else {
@@ -83,8 +87,17 @@ int main() {
     }  // end websocket message if
   }); // end h.onMessage
 
-  h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
-    std::cout << "Connected!!!" << std::endl;
+  h.onConnection([&h, &pid, &twiddler, &KP_START, &KI_START, &KD_START](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
+    // std::cout << "Connected!!!" << std::endl;
+    if (pid.TotalSquaredCTE() != 0) {
+      twiddler.ProcessTotalSquaredCTE(pid.TotalSquaredCTE());
+    }
+    double p, i, d;
+    p = twiddler.GetKp();
+    i = twiddler.GetKi();
+    d = twiddler.GetKd();
+    std::cout << "trying p:" << p << ", i:" << i << ", d:" << d << std::endl;
+    pid = PID(p, i, d);
   });
 
   h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code, 

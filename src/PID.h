@@ -9,27 +9,33 @@ class PID {
   PID();
 
   /**
+   * Constructor
+   * @param (Kp_, Ki_, Kd_) The initial PID coefficients
+   */
+  PID(double Kp_, double Ki_, double Kd_);
+
+  /**
    * Destructor.
    */
   virtual ~PID();
 
   /**
-   * Initialize PID.
-   * @param (Kp_, Ki_, Kd_) The initial PID coefficients
-   */
-  void Init(double Kp_, double Ki_, double Kd_);
-
-  /**
-   * Update the PID error variables given cross track error.
+   * Process a given cross track error.
    * @param cte The current cross track error
    */
-  void UpdateError(double cte);
+  void ProcessError(double cte);
 
   /**
-   * Calculate the total PID error.
-   * @output The total PID error
+   * Calculate the output of the PID controller.
+   * @output PID controller output
    */
-  double TotalError();
+  double Output();
+
+  /**
+   * Calculate the total squared CTE since construction.
+   * @output The total CTE since construction
+   */
+  double TotalSquaredCTE();
 
  private:
   /**
@@ -45,6 +51,11 @@ class PID {
   double Kp;
   double Ki;
   double Kd;
+
+  const static int CTE_HIST_SIZE = 100;
+  double cte_hist[CTE_HIST_SIZE];
+  int cte_hist_index = 0;
+  double total_squared_cte = 0;
 };
 
 #endif  // PID_H
