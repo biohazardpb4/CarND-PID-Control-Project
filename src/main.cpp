@@ -35,10 +35,10 @@ int main() {
   uWS::Hub h;
 
   // Initial params taken from PID Parameter Optimization Lesson.
-  const double KP_START = 0.25;
-  const double KI_START = 0.0006;
-  const double KD_START = 1.55;
-  Twiddler twiddler(KP_START, KI_START, KD_START, 0, 0, 0);//0.005, 0.0005, 0.05);
+  const double KP_START = 0.075;
+  const double KI_START = 0.001;
+  const double KD_START = 1.0;
+  Twiddler twiddler(KP_START, KI_START, KD_START, 0.0, 0.0, 0.0);// 0.1, 0.0002, 0.5);
   PID pid(twiddler.GetKp(), twiddler.GetKi(), twiddler.GetKd());
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 

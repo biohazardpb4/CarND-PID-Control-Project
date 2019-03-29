@@ -1,5 +1,6 @@
  #include "twiddler.h"
  #include <iostream>
+ #include <math.h>
  
  Twiddler::Twiddler() {};
 
@@ -26,7 +27,66 @@
    */
   void Twiddler::ProcessTotalSquaredCTE(double cte) {
     std::cout << "processing cte: " << cte << ", iK: " << this->iK << ", state: " <<
-      (this->state == UP ? "UP" : "DOWN") << std::endl;
+      (this->state == UP ? "UP" : "DOWN") << ", Dp: " << this->Dp << ", Di: " << this->Di << ", Dd: " << this->Dd << std::endl;
+    bool inc_ik = false;
+    switch(this->state) {
+    case UP:
+        if (cte < this->minTotalSquaredCTE || this->minTotalSquaredCTE < 0) {
+            std::cout << "found min, increasing delta" << std::endl;
+            if (this->iK == 0) {
+                this->Dp *= 1.5;
+            }
+            if (this->iK == 1) {
+                this->Di *= 1.5;
+            }
+            if (this->iK == 2) {
+                this->Dd *= 1.5;
+            }
+            this->minTotalSquaredCTE = cte;
+            inc_ik = true;
+        } else {
+            std::cout << "flipping delta" << std::endl;
+            if (this->iK == 0) {
+                this->Kp -= 2.0*this->Dp;
+            }
+            if (this->iK == 1) {
+                this->Ki -= 2.0*this->Di;
+            }
+            if (this->iK == 2) {
+                this->Kd -= 2.0*this->Dd;
+            }
+            this->state = DOWN;
+        }
+        break;
+    case DOWN:
+    if (cte < this->minTotalSquaredCTE || this->minTotalSquaredCTE < 0) {
+            std::cout << "found min, increasing delta" << std::endl;
+            if (this->iK == 0) {
+                this->Dp *= 1.5;
+            }
+            if (this->iK == 1) {
+                this->Di *= 1.5;
+            }
+            if (this->iK == 2) {
+                this->Dd *= 1.5;
+            }
+            this->minTotalSquaredCTE = cte;
+            inc_ik = true;
+    } else {
+        std::cout << "decreasing delta" << std::endl;
+        if (this->iK == 0) {
+            this->Dp *= 0.5;
+        }
+        if (this->iK == 1) {
+            this->Di *= 0.5;
+        }
+        if (this->iK == 2) {
+            this->Dd *= 0.5;
+        }
+    }
+    this->state = UP;
+    inc_ik = true;
+    }
     if (this->iK == 0) {
         this->Kp += this->Dp;
     }
@@ -36,64 +96,12 @@
     if (this->iK == 2) {
         this->Kd += this->Dd;
     }
-      switch(this->state) {
-        case UP:
-          if (cte < this->minTotalSquaredCTE || this->minTotalSquaredCTE < 0) {
-              std::cout << "found min, increasing delta" << std::endl;
-              if (this->iK == 0) {
-                  this->Dp *= 1.1;
-              }
-              if (this->iK == 1) {
-                  this->Di *= 1.1;
-              }
-              if (this->iK == 2) {
-                  this->Dd *= 1.1;
-              }
-              this->minTotalSquaredCTE = cte;
-              this->iK = (this->iK+1)%3;
-          } else {
-              std::cout << "flipping delta" << std::endl;
-              if (this->iK == 0) {
-                  this->Kp -= 2.0*this->Dp;
-              }
-              if (this->iK == 1) {
-                  this->Ki -= 2.0*this->Di;
-              }
-              if (this->iK == 2) {
-                  this->Kd -= 2.0*this->Dd;
-              }
-              this->state = DOWN;
-          }
-          break;
-        case DOWN:
-        if (cte < this->minTotalSquaredCTE || this->minTotalSquaredCTE < 0) {
-              std::cout << "found min, increasing delta" << std::endl;
-              if (this->iK == 0) {
-                  this->Dp *= 1.1;
-              }
-              if (this->iK == 1) {
-                  this->Di *= 1.1;
-              }
-              if (this->iK == 2) {
-                  this->Dd *= 1.1;
-              }
-              this->minTotalSquaredCTE = cte;
-              this->iK = (this->iK+1)%3;
-        } else {
-            std::cout << "decreasing delta" << std::endl;
-            if (this->iK == 0) {
-                this->Dp *= 0.9;
-            }
-            if (this->iK == 1) {
-                this->Di *= 0.9;
-            }
-            if (this->iK == 2) {
-                this->Dd *= 0.9;
-            }
-        }
-        this->state = UP;
+    if (inc_ik) {
         this->iK = (this->iK+1)%3;
-      }
+    }
+    this->Kp = std::max(this->Kp, 0.0);
+    this->Ki = std::max(this->Ki, 0.0);
+    this->Kd = std::max(this->Kd, 0.0);
   };
 
   double Twiddler::GetKp() {
